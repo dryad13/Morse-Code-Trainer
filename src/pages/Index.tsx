@@ -4,12 +4,15 @@ import { MorseTree } from "@/components/MorseTree";
 import { Instructions } from "@/components/Instructions";
 import { Button } from "@/components/ui/button";
 import { decodeMorse } from "@/utils/morseCode";
+import { morseAudio } from "@/utils/audioFeedback";
 import { toast } from "sonner";
+import { Volume2, VolumeX } from "lucide-react";
 
 const Index = () => {
   const [currentSequence, setCurrentSequence] = useState("");
   const [decodedText, setDecodedText] = useState("");
   const [lastChar, setLastChar] = useState("");
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   const handleKeyPress = useCallback((sequence: string) => {
     const char = decodeMorse(sequence);
@@ -18,7 +21,10 @@ const Index = () => {
     setCurrentSequence("");
     
     if (char === "?") {
+      morseAudio.playError();
       toast.error("Unknown morse code sequence");
+    } else {
+      morseAudio.playSuccess();
     }
   }, []);
 
@@ -27,6 +33,13 @@ const Index = () => {
     setDecodedText("");
     setLastChar("");
     toast.success("Cleared");
+  };
+
+  const toggleSound = () => {
+    const newState = !soundEnabled;
+    setSoundEnabled(newState);
+    morseAudio.setEnabled(newState);
+    toast.success(newState ? "Sound enabled" : "Sound disabled");
   };
 
   useEffect(() => {
@@ -39,9 +52,11 @@ const Index = () => {
       switch (e.key) {
         case "ArrowRight":
           setCurrentSequence((prev) => prev + "·");
+          morseAudio.playDot();
           break;
         case "ArrowDown":
           setCurrentSequence((prev) => prev + "−");
+          morseAudio.playDash();
           break;
         case " ":
         case "Enter":
@@ -90,13 +105,28 @@ const Index = () => {
               lastChar={lastChar}
             />
             <Instructions />
-            <Button
-              onClick={handleClear}
-              variant="destructive"
-              className="w-full font-mono"
-            >
-              Clear All
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleClear}
+                variant="destructive"
+                className="flex-1 font-mono"
+              >
+                Clear All
+              </Button>
+              <Button
+                onClick={toggleSound}
+                variant="secondary"
+                size="icon"
+                className="font-mono"
+                title={soundEnabled ? "Disable sound" : "Enable sound"}
+              >
+                {soundEnabled ? (
+                  <Volume2 className="h-5 w-5" />
+                ) : (
+                  <VolumeX className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
           </div>
 
           {/* Right Column */}
