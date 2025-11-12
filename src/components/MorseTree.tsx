@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState, useRef } from "react";
 
 interface TreeNode {
   char: string;
@@ -190,20 +191,49 @@ const renderNode = (node: TreeNode | undefined, isRoot = false): JSX.Element | n
 
 export const MorseTree = () => {
   const tree = buildTree();
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const svgRef = useRef<SVGSVGElement>(null);
+  
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+  
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setPan({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y
+    });
+  };
+  
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
   
   return (
     <Card className="p-6 bg-card border-border h-full flex flex-col">
       <div className="mb-4">
         <h2 className="text-xl font-mono text-foreground">Morse Code Tree</h2>
         <p className="text-muted-foreground text-sm font-mono mt-1">
-          Follow: <span className="text-primary">·</span> (dot/→) or <span className="text-primary">−</span> (dash/↓)
+          Follow: <span className="text-primary">·</span> (dot/↓) or <span className="text-primary">−</span> (dash/→) | Drag to pan
         </p>
       </div>
       
       <ScrollArea className="flex-1">
-        <div className="min-w-[800px]">
-          <svg width="800" height="420" className="w-full">
-            {renderNode(tree, true)}
+        <div 
+          className="min-w-[800px] cursor-grab active:cursor-grabbing"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          <svg ref={svgRef} width="800" height="420" className="w-full">
+            <g transform={`translate(${pan.x}, ${pan.y})`}>
+              {renderNode(tree, true)}
+            </g>
           </svg>
         </div>
       </ScrollArea>

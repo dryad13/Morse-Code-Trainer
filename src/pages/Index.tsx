@@ -50,11 +50,11 @@ const Index = () => {
       }
 
       switch (e.key) {
-        case "ArrowRight":
+        case "ArrowDown":
           setCurrentSequence((prev) => prev + "·");
           morseAudio.playDot();
           break;
-        case "ArrowDown":
+        case "ArrowRight":
           setCurrentSequence((prev) => prev + "−");
           morseAudio.playDash();
           break;
