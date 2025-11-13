@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { MorseDisplay } from "@/components/MorseDisplay";
 import { MorseTree } from "@/components/MorseTree";
 import { Instructions } from "@/components/Instructions";
+import { MobileControls } from "@/components/MobileControls";
 import { Button } from "@/components/ui/button";
 import { decodeMorse } from "@/utils/morseCode";
 import { morseAudio } from "@/utils/audioFeedback";
@@ -40,6 +41,34 @@ const Index = () => {
     setSoundEnabled(newState);
     morseAudio.setEnabled(newState);
     toast.success(newState ? "Sound enabled" : "Sound disabled");
+  };
+
+  const handleDot = () => {
+    setCurrentSequence((prev) => prev + "·");
+    morseAudio.playDot();
+  };
+
+  const handleDash = () => {
+    setCurrentSequence((prev) => prev + "−");
+    morseAudio.playDash();
+  };
+
+  const handleSpace = () => {
+    if (currentSequence) {
+      handleKeyPress(currentSequence);
+    } else {
+      setDecodedText((prev) => prev + " ");
+      setLastChar(" ");
+    }
+  };
+
+  const handleBackspace = () => {
+    if (currentSequence) {
+      setCurrentSequence((prev) => prev.slice(0, -1));
+    } else if (decodedText) {
+      setDecodedText((prev) => prev.slice(0, -1));
+      setLastChar("");
+    }
   };
 
   useEffect(() => {
@@ -96,7 +125,17 @@ const Index = () => {
         </div>
 
         {/* Tree section */}
-        <MorseTree />
+        <MorseTree currentSequence={currentSequence} />
+
+        {/* Mobile Controls */}
+        <div className="lg:hidden">
+          <MobileControls
+            onDot={handleDot}
+            onDash={handleDash}
+            onSpace={handleSpace}
+            onBackspace={handleBackspace}
+          />
+        </div>
 
         {/* Message & instructions */}
         <div className="grid lg:grid-cols-2 gap-6 items-start">

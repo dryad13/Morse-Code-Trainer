@@ -11,6 +11,12 @@ interface TreeNode {
   dashChild?: TreeNode;
 }
 
+interface PathInfo {
+  nodes: Set<string>;
+  edges: Set<string>;
+  currentNode?: TreeNode;
+}
+
 const buildTree = (): TreeNode => {
   // Level 0 - Root
   const root: TreeNode = { char: "START", x: 400, y: 30 };
@@ -122,11 +128,43 @@ const buildTree = (): TreeNode => {
 const DOT_COLOR = "#ef4444";
 const DASH_COLOR = "#3b82f6";
 
-const renderNode = (node: TreeNode | undefined, isRoot = false): JSX.Element | null => {
+const findPath = (sequence: string): PathInfo => {
+  const result: PathInfo = {
+    nodes: new Set<string>(),
+    edges: new Set<string>(),
+  };
+  
+  const root = buildTree();
+  let current: TreeNode | undefined = root;
+  result.nodes.add(`${root.char}-${root.x}-${root.y}`);
+  
+  for (const symbol of sequence) {
+    if (!current) break;
+    
+    const next = symbol === '·' ? current.dotChild : symbol === '−' ? current.dashChild : undefined;
+    if (!next) break;
+    
+    const edgeKey = `${current.char}-${current.x}-${current.y}->${next.char}-${next.x}-${next.y}-${symbol}`;
+    result.edges.add(edgeKey);
+    result.nodes.add(`${next.char}-${next.x}-${next.y}`);
+    current = next;
+  }
+  
+  result.currentNode = current;
+  return result;
+};
+
+const renderNode = (node: TreeNode | undefined, pathInfo: PathInfo, isRoot = false): JSX.Element | null => {
   if (!node) return null;
   
+  const nodeKey = `${node.char}-${node.x}-${node.y}`;
+  const isHighlighted = pathInfo.nodes.has(nodeKey);
+  const isCurrent = pathInfo.currentNode?.char === node.char && 
+                    pathInfo.currentNode?.x === node.x && 
+                    pathInfo.currentNode?.y === node.y;
+  
   return (
-    <g key={`${node.char}-${node.x}-${node.y}`}>
+    <g key={nodeKey}>
       {/* Draw lines to children */}
       {node.dotChild && (
         <>
@@ -136,8 +174,8 @@ const renderNode = (node: TreeNode | undefined, isRoot = false): JSX.Element | n
             x2={node.dotChild.x}
             y2={node.dotChild.y - 15}
             stroke={DOT_COLOR}
-            strokeWidth="2"
-            opacity="0.7"
+            strokeWidth={pathInfo.edges.has(`${nodeKey}->${node.dotChild.char}-${node.dotChild.x}-${node.dotChild.y}-·`) ? "4" : "2"}
+            opacity={pathInfo.edges.has(`${nodeKey}->${node.dotChild.char}-${node.dotChild.x}-${node.dotChild.y}-·`) ? "1" : "0.7"}
           />
           <text
             x={(node.x + node.dotChild.x) / 2 - 10}
@@ -158,8 +196,8 @@ const renderNode = (node: TreeNode | undefined, isRoot = false): JSX.Element | n
             x2={node.dashChild.x}
             y2={node.dashChild.y - 15}
             stroke={DASH_COLOR}
-            strokeWidth="2"
-            opacity="0.7"
+            strokeWidth={pathInfo.edges.has(`${nodeKey}->${node.dashChild.char}-${node.dashChild.x}-${node.dashChild.y}-−`) ? "4" : "2"}
+            opacity={pathInfo.edges.has(`${nodeKey}->${node.dashChild.char}-${node.dashChild.x}-${node.dashChild.y}-−`) ? "1" : "0.7"}
           />
           <text
             x={(node.x + node.dashChild.x) / 2 + 5}
@@ -177,22 +215,24 @@ const renderNode = (node: TreeNode | undefined, isRoot = false): JSX.Element | n
       <circle
         cx={node.x}
         cy={node.y}
-        r={isRoot ? "20" : "18"}
-        className={isRoot ? "fill-primary" : "fill-accent"}
-        opacity={isRoot ? "0.8" : "1"}
+        r={isRoot ? "20" : isCurrent ? "22" : "18"}
+        className={isRoot ? "fill-primary" : isHighlighted ? "fill-primary" : "fill-accent"}
+        opacity={isCurrent ? "1" : isRoot ? "0.8" : isHighlighted ? "0.9" : "1"}
+        strokeWidth={isCurrent ? "3" : "0"}
+        stroke={isCurrent ? "#10b981" : "none"}
       />
       <text
         x={node.x}
         y={node.y + 5}
         textAnchor="middle"
-        className={`font-mono font-bold text-sm ${isRoot ? "fill-primary-foreground" : "fill-accent-foreground"}`}
+        className={`font-mono font-bold text-sm ${isRoot || isHighlighted ? "fill-primary-foreground" : "fill-accent-foreground"}`}
       >
         {node.char === "START" ? "⚡" : node.char}
       </text>
       
       {/* Recursively render children */}
-      {renderNode(node.dotChild)}
-      {renderNode(node.dashChild)}
+      {renderNode(node.dotChild, pathInfo)}
+      {renderNode(node.dashChild, pathInfo)}
     </g>
   );
 };
@@ -201,8 +241,13 @@ const MIN_ZOOM = 0.6;
 const MAX_ZOOM = 1.8;
 const ZOOM_STEP = 0.15;
 
-export const MorseTree = () => {
+interface MorseTreeProps {
+  currentSequence?: string;
+}
+
+export const MorseTree = ({ currentSequence = "" }: MorseTreeProps) => {
   const tree = buildTree();
+  const pathInfo = findPath(currentSequence);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -273,7 +318,7 @@ export const MorseTree = () => {
       >
         <svg viewBox="0 0 850 420" className="h-[460px] w-full select-none">
           <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-            {renderNode(tree, true)}
+            {renderNode(tree, pathInfo, true)}
           </g>
         </svg>
       </div>
