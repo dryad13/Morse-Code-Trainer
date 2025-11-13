@@ -95,16 +95,17 @@ const Index = () => {
           </p>
         </div>
 
-        {/* Main Content */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Left Column */}
-          <div className="space-y-6">
+        {/* Tree section */}
+        <MorseTree />
+
+        {/* Message & instructions */}
+        <div className="grid lg:grid-cols-2 gap-6 items-start">
+          <div className="space-y-4">
             <MorseDisplay
               currentSequence={currentSequence}
               decodedText={decodedText}
               lastChar={lastChar}
             />
-            <Instructions />
             <div className="flex gap-2">
               <Button
                 onClick={handleClear}
@@ -128,9 +129,7 @@ const Index = () => {
               </Button>
             </div>
           </div>
-
-          {/* Right Column */}
-          <MorseTree />
+          <Instructions />
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
+import { useState, type MouseEvent } from "react";
 import { Card } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Minus, Plus } from "lucide-react";
 
 interface TreeNode {
   char: string;
@@ -118,6 +119,9 @@ const buildTree = (): TreeNode => {
   return root;
 };
 
+const DOT_COLOR = "#ef4444";
+const DASH_COLOR = "#3b82f6";
+
 const renderNode = (node: TreeNode | undefined, isRoot = false): JSX.Element | null => {
   if (!node) return null;
   
@@ -131,14 +135,16 @@ const renderNode = (node: TreeNode | undefined, isRoot = false): JSX.Element | n
             y1={node.y + 15}
             x2={node.dotChild.x}
             y2={node.dotChild.y - 15}
-            className="stroke-primary"
+            stroke={DOT_COLOR}
             strokeWidth="2"
-            opacity="0.6"
+            opacity="0.7"
           />
           <text
             x={(node.x + node.dotChild.x) / 2 - 10}
             y={(node.y + node.dotChild.y) / 2}
-            className="fill-primary text-xs font-mono"
+            className="font-mono font-bold"
+            fontSize="16"
+            style={{ fill: DOT_COLOR }}
           >
             ·
           </text>
@@ -151,14 +157,16 @@ const renderNode = (node: TreeNode | undefined, isRoot = false): JSX.Element | n
             y1={node.y + 15}
             x2={node.dashChild.x}
             y2={node.dashChild.y - 15}
-            className="stroke-primary"
+            stroke={DASH_COLOR}
             strokeWidth="2"
-            opacity="0.6"
+            opacity="0.7"
           />
           <text
             x={(node.x + node.dashChild.x) / 2 + 5}
             y={(node.y + node.dashChild.y) / 2}
-            className="fill-primary text-xs font-mono"
+            className="font-mono font-bold"
+            fontSize="16"
+            style={{ fill: DASH_COLOR }}
           >
             −
           </text>
@@ -189,55 +197,87 @@ const renderNode = (node: TreeNode | undefined, isRoot = false): JSX.Element | n
   );
 };
 
+const MIN_ZOOM = 0.6;
+const MAX_ZOOM = 1.8;
+const ZOOM_STEP = 0.15;
+
 export const MorseTree = () => {
   const tree = buildTree();
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const svgRef = useRef<SVGSVGElement>(null);
-  
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const [zoom, setZoom] = useState(1);
+
+  const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
     setIsDragging(true);
     setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
   };
-  
-  const handleMouseMove = (e: React.MouseEvent) => {
+
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
     if (!isDragging) return;
     setPan({
       x: e.clientX - dragStart.x,
       y: e.clientY - dragStart.y
     });
   };
-  
+
   const handleMouseUp = () => {
     setIsDragging(false);
   };
-  
+
+  const handleZoom = (direction: "in" | "out") => {
+    setZoom((prev) => {
+      const next = direction === "in" ? prev + ZOOM_STEP : prev - ZOOM_STEP;
+      return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number(next.toFixed(2))));
+    });
+  };
+
   return (
     <Card className="p-6 bg-card border-border h-full flex flex-col">
-      <div className="mb-4">
-        <h2 className="text-xl font-mono text-foreground">Morse Code Tree</h2>
-        <p className="text-muted-foreground text-sm font-mono mt-1">
-          Follow: <span className="text-primary">·</span> (dot/↓) or <span className="text-primary">−</span> (dash/→) | Drag to pan
-        </p>
-      </div>
-      
-      <ScrollArea className="flex-1">
-        <div 
-          className="min-w-[800px] cursor-grab active:cursor-grabbing"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-          <svg ref={svgRef} width="800" height="420" className="w-full">
-            <g transform={`translate(${pan.x}, ${pan.y})`}>
-              {renderNode(tree, true)}
-            </g>
-          </svg>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 className="text-xl font-mono text-foreground">Morse Code Tree</h2>
+          <p className="text-muted-foreground text-sm font-mono mt-1">
+            Follow: <span className="text-red-500">·</span> (dot/↓) or <span className="text-blue-500">−</span> (dash/→) | Drag to pan
+          </p>
         </div>
-      </ScrollArea>
-      
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => handleZoom("out")}
+            aria-label="Zoom out"
+          >
+            <Minus className="h-4 w-4" />
+          </Button>
+          <span className="font-mono text-sm w-16 text-center">{Math.round(zoom * 100)}%</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => handleZoom("in")}
+            aria-label="Zoom in"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div
+        className="flex-1 rounded-lg border border-border bg-background cursor-grab active:cursor-grabbing overflow-hidden"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        <svg viewBox="0 0 850 420" className="h-[460px] w-full select-none">
+          <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
+            {renderNode(tree, true)}
+          </g>
+        </svg>
+      </div>
+
       <div className="mt-4 pt-4 border-t border-border">
         <p className="text-muted-foreground text-xs font-mono">
           Common: SOS (···−−−···) | A (·−) | B (−···) | C (−·−·)
