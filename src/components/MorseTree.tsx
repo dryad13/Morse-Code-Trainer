@@ -107,19 +107,23 @@ const buildTree = (): TreeNode => {
   o.dotChild = eight;
   o.dashChild = nine;
   
-  // Level 5 - Add some numbers
+  // Level 5 - Numbers
   const five: TreeNode = { char: "5", x: 0, y: 380 };
   const four: TreeNode = { char: "4", x: 50, y: 380 };
-  h.dotChild = five;
-  h.dashChild = { char: "4", x: 50, y: 380 };
-  
+  const three: TreeNode = { char: "3", x: 100, y: 380 };
+  const two: TreeNode = { char: "2", x: 175, y: 380 };
+  const one: TreeNode = { char: "1", x: 325, y: 380 };
   const six: TreeNode = { char: "6", x: 450, y: 380 };
-  b.dashChild = six;
-  
   const seven: TreeNode = { char: "7", x: 650, y: 380 };
-  z.dashChild = seven;
-  
   const zero: TreeNode = { char: "0", x: 800, y: 380 };
+  
+  h.dotChild = five;
+  h.dashChild = four;
+  v.dashChild = three;
+  f.dashChild = two;
+  j.dashChild = one;
+  b.dashChild = six;
+  z.dashChild = seven;
   nine.dashChild = zero;
   
   return root;
