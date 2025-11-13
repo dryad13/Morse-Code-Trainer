@@ -1,19 +1,31 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { MorseDisplay } from "@/components/MorseDisplay";
 import { MorseTree } from "@/components/MorseTree";
 import { Instructions } from "@/components/Instructions";
 import { MobileControls } from "@/components/MobileControls";
+import { MessagePlayer } from "@/components/MessagePlayer";
+import { MessageHistory } from "@/components/MessageHistory";
 import { Button } from "@/components/ui/button";
 import { decodeMorse } from "@/utils/morseCode";
+import { textToMorse } from "@/utils/textToMorse";
 import { morseAudio } from "@/utils/audioFeedback";
 import { toast } from "sonner";
 import { Volume2, VolumeX } from "lucide-react";
+
+interface Message {
+  id: string;
+  text: string;
+  timestamp: Date;
+}
 
 const Index = () => {
   const [currentSequence, setCurrentSequence] = useState("");
   const [decodedText, setDecodedText] = useState("");
   const [lastChar, setLastChar] = useState("");
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const playbackRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleKeyPress = useCallback((sequence: string) => {
     const char = decodeMorse(sequence);
@@ -71,8 +83,97 @@ const Index = () => {
     }
   };
 
+  const stopPlayback = () => {
+    if (playbackRef.current) {
+      clearTimeout(playbackRef.current);
+      playbackRef.current = null;
+    }
+    setIsPlaying(false);
+    setCurrentSequence("");
+  };
+
+  const playMorseSequence = async (text: string) => {
+    if (isPlaying) {
+      stopPlayback();
+      return;
+    }
+
+    // Add to history
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      text,
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [newMessage, ...prev]);
+
+    setIsPlaying(true);
+    const morseSequences = textToMorse(text);
+    
+    let index = 0;
+    
+    const playNext = () => {
+      if (index >= morseSequences.length) {
+        setIsPlaying(false);
+        setCurrentSequence("");
+        return;
+      }
+
+      const sequence = morseSequences[index];
+      
+      if (sequence === " ") {
+        // Space between words
+        setCurrentSequence("");
+        index++;
+        playbackRef.current = setTimeout(playNext, 400);
+        return;
+      }
+
+      // Play each dot/dash in the sequence
+      let dotDashIndex = 0;
+      setCurrentSequence("");
+
+      const playDotDash = () => {
+        if (dotDashIndex >= sequence.length) {
+          // Finished this character, move to next
+          index++;
+          playbackRef.current = setTimeout(playNext, 300);
+          return;
+        }
+
+        const symbol = sequence[dotDashIndex];
+        setCurrentSequence((prev) => prev + symbol);
+        
+        if (symbol === "·") {
+          morseAudio.playDot();
+          dotDashIndex++;
+          playbackRef.current = setTimeout(playDotDash, 150);
+        } else if (symbol === "−") {
+          morseAudio.playDash();
+          dotDashIndex++;
+          playbackRef.current = setTimeout(playDotDash, 350);
+        }
+      };
+
+      playDotDash();
+    };
+
+    playNext();
+  };
+
+  const handleDeleteMessage = (id: string) => {
+    setMessages((prev) => prev.filter((msg) => msg.id !== id));
+  };
+
+  const handleClearAllMessages = () => {
+    setMessages([]);
+    toast.success("History cleared");
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept keys during playback
+      if (isPlaying) return;
+
       // Prevent default behavior for arrow keys
       if (["ArrowRight", "ArrowDown", "ArrowUp", "ArrowLeft", " ", "Enter", "Backspace"].includes(e.key)) {
         e.preventDefault();
@@ -108,8 +209,11 @@ const Index = () => {
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentSequence, decodedText, handleKeyPress]);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      stopPlayback();
+    };
+  }, [currentSequence, decodedText, handleKeyPress, isPlaying]);
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -137,6 +241,21 @@ const Index = () => {
           />
         </div>
 
+        {/* Message Player */}
+        <MessagePlayer
+          onPlay={playMorseSequence}
+          onStop={stopPlayback}
+          isPlaying={isPlaying}
+        />
+
+        {/* Message History */}
+        <MessageHistory
+          messages={messages}
+          onPlay={playMorseSequence}
+          onDelete={handleDeleteMessage}
+          onClearAll={handleClearAllMessages}
+        />
+
         {/* Message & instructions */}
         <div className="grid lg:grid-cols-2 gap-6 items-start">
           <div className="space-y-4">
@@ -150,6 +269,7 @@ const Index = () => {
                 onClick={handleClear}
                 variant="destructive"
                 className="flex-1 font-mono"
+                disabled={isPlaying}
               >
                 Clear All
               </Button>
