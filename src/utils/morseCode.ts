@@ -42,5 +42,7 @@ export const morseToChar: { [key: string]: string } = {
 };
 
 export const decodeMorse = (sequence: string): string => {
-  return morseToChar[sequence] || "?";
+  const result = morseToChar[sequence] || "?";
+  console.log("[decodeMorse] invoked", { sequence, result });
+  return result;
 };

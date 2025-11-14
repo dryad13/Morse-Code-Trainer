@@ -41,7 +41,8 @@ export const charToMorse: { [key: string]: string } = {
 };
 
 export const textToMorse = (text: string): string[] => {
-  return text
+  console.log("[textToMorse] invoked", { text });
+  const result = text
     .toUpperCase()
     .split("")
     .map((char) => {
@@ -49,4 +50,56 @@ export const textToMorse = (text: string): string[] => {
       return charToMorse[char] || "";
     })
     .filter((morse) => morse !== "");
+  console.log("[textToMorse] result", result);
+  return result;
+};
+
+interface ToMorseCodeOptions {
+  letterSeparator?: string;
+  wordSeparator?: string;
+}
+
+export const toMorseCode = (
+  text: string,
+  { letterSeparator = " ", wordSeparator = " / " }: ToMorseCodeOptions = {}
+): string => {
+  console.log("[toMorseCode] invoked", { text, letterSeparator, wordSeparator });
+  const tokens: string[] = [];
+
+  for (const char of text.toUpperCase()) {
+    if (char === " ") {
+      if (tokens.length === 0 || tokens[tokens.length - 1] === wordSeparator) {
+        continue;
+      }
+
+      tokens.push(wordSeparator);
+      continue;
+    }
+
+    const morse = charToMorse[char];
+    if (morse) {
+      console.log("[toMorseCode] mapped", { char, morse });
+      tokens.push(morse);
+    }
+  }
+
+  let result = "";
+
+  for (const token of tokens) {
+    if (token === wordSeparator) {
+      result = result.trimEnd();
+      result += wordSeparator;
+      continue;
+    }
+
+    if (result && !result.endsWith(wordSeparator)) {
+      result += letterSeparator;
+    }
+
+    result += token;
+  }
+
+  const trimmed = result.trim();
+  console.log("[toMorseCode] result", { result: trimmed });
+  return trimmed;
 };

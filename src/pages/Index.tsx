@@ -28,9 +28,15 @@ const Index = () => {
   const playbackRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleKeyPress = useCallback((sequence: string) => {
+    console.log("[Index] handleKeyPress invoked", { sequence });
     const char = decodeMorse(sequence);
+    console.log("[Index] handleKeyPress decoded", { sequence, char });
     setLastChar(char);
-    setDecodedText((prev) => prev + char);
+    setDecodedText((prev) => {
+      const next = prev + char;
+      console.log("[Index] handleKeyPress updated decodedText", { previous: prev, next });
+      return next;
+    });
     setCurrentSequence("");
     
     if (char === "?") {
@@ -42,6 +48,7 @@ const Index = () => {
   }, []);
 
   const handleClear = () => {
+    console.log("[Index] handleClear invoked");
     setCurrentSequence("");
     setDecodedText("");
     setLastChar("");
@@ -50,22 +57,32 @@ const Index = () => {
 
   const toggleSound = () => {
     const newState = !soundEnabled;
+    console.log("[Index] toggleSound", { previous: soundEnabled, next: newState });
     setSoundEnabled(newState);
     morseAudio.setEnabled(newState);
     toast.success(newState ? "Sound enabled" : "Sound disabled");
   };
 
   const handleDot = () => {
-    setCurrentSequence((prev) => prev + "·");
+    setCurrentSequence((prev) => {
+      const next = prev + "·";
+      console.log("[Index] handleDot", { previous: prev, next });
+      return next;
+    });
     morseAudio.playDot();
   };
 
   const handleDash = () => {
-    setCurrentSequence((prev) => prev + "−");
+    setCurrentSequence((prev) => {
+      const next = prev + "−";
+      console.log("[Index] handleDash", { previous: prev, next });
+      return next;
+    });
     morseAudio.playDash();
   };
 
   const handleSpace = () => {
+    console.log("[Index] handleSpace invoked", { currentSequence });
     if (currentSequence) {
       handleKeyPress(currentSequence);
     } else {
@@ -75,43 +92,76 @@ const Index = () => {
   };
 
   const handleBackspace = () => {
+    console.log("[Index] handleBackspace invoked", { currentSequence, decodedText });
     if (currentSequence) {
-      setCurrentSequence((prev) => prev.slice(0, -1));
+      setCurrentSequence((prev) => {
+        const next = prev.slice(0, -1);
+        console.log("[Index] handleBackspace updated sequence", { previous: prev, next });
+        return next;
+      });
     } else if (decodedText) {
-      setDecodedText((prev) => prev.slice(0, -1));
+      setDecodedText((prev) => {
+        const next = prev.slice(0, -1);
+        console.log("[Index] handleBackspace updated decodedText", { previous: prev, next });
+        return next;
+      });
       setLastChar("");
     }
   };
 
-  const stopPlayback = () => {
+  const stopPlayback = useCallback(() => {
+    console.log("[Index] stopPlayback invoked", {
+      hasTimeout: Boolean(playbackRef.current),
+    });
     if (playbackRef.current) {
       clearTimeout(playbackRef.current);
       playbackRef.current = null;
     }
     setIsPlaying(false);
     setCurrentSequence("");
+  }, []);
+
+  const handleTreeSequenceSelect = (sequence: string) => {
+    console.log("[Index] handleTreeSequenceSelect invoked", { sequence, isPlaying });
+    if (!sequence) return;
+
+    if (isPlaying) {
+      stopPlayback();
+    }
+
+    setCurrentSequence(sequence);
+    setLastChar("");
   };
 
-  const playMorseSequence = async (text: string) => {
+  const playMorseSequence = async (
+    text: string,
+    { addToHistory = true }: { addToHistory?: boolean } = {}
+  ) => {
+    console.log("[Index] playMorseSequence invoked", { text, addToHistory, isPlaying });
     if (isPlaying) {
       stopPlayback();
       return;
     }
 
-    // Add to history
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [newMessage, ...prev]);
+    if (addToHistory) {
+      // Add to history
+      const newMessage: Message = {
+        id: Date.now().toString(),
+        text,
+        timestamp: new Date(),
+      };
+      console.log("[Index] playMorseSequence adding history", newMessage);
+      setMessages((prev) => [newMessage, ...prev]);
+    }
 
     setIsPlaying(true);
     const morseSequences = textToMorse(text);
-    
+    console.log("[Index] playMorseSequence morseSequences", morseSequences);
+
     let index = 0;
-    
+
     const playNext = () => {
+      console.log("[Index] playMorseSequence playNext", { index, total: morseSequences.length });
       if (index >= morseSequences.length) {
         setIsPlaying(false);
         setCurrentSequence("");
@@ -119,11 +169,13 @@ const Index = () => {
       }
 
       const sequence = morseSequences[index];
-      
+      console.log("[Index] playMorseSequence processing sequence", { index, sequence });
+
       if (sequence === " ") {
         // Space between words
         setCurrentSequence("");
         index++;
+        console.log("[Index] playMorseSequence encountered word gap", { nextIndex: index });
         playbackRef.current = setTimeout(playNext, 400);
         return;
       }
@@ -133,17 +185,27 @@ const Index = () => {
       let builtSequence = "";
 
       const playDotDash = () => {
+        console.log("[Index] playMorseSequence playDotDash", {
+          dotDashIndex,
+          sequenceLength: sequence.length,
+          builtSequence,
+        });
         if (dotDashIndex >= sequence.length) {
           // Finished this character, move to next
           index++;
+          console.log("[Index] playMorseSequence completed character", { nextIndex: index });
           playbackRef.current = setTimeout(playNext, 300);
           return;
         }
 
         const symbol = sequence[dotDashIndex];
         builtSequence += symbol;
+        console.log("[Index] playMorseSequence playing symbol", {
+          symbol,
+          builtSequence,
+        });
         setCurrentSequence(builtSequence);
-        
+
         if (symbol === "·") {
           morseAudio.playDot();
           dotDashIndex++;
@@ -162,16 +224,19 @@ const Index = () => {
   };
 
   const handleDeleteMessage = (id: string) => {
+    console.log("[Index] handleDeleteMessage invoked", { id });
     setMessages((prev) => prev.filter((msg) => msg.id !== id));
   };
 
   const handleClearAllMessages = () => {
+    console.log("[Index] handleClearAllMessages invoked");
     setMessages([]);
     toast.success("History cleared");
   };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      console.log("[Index] handleKeyDown", { key: e.key, isPlaying });
       // Don't intercept keys during playback
       if (isPlaying) return;
 
@@ -191,14 +256,22 @@ const Index = () => {
         case ".":
         case "e":
         case "E":
-          setCurrentSequence((prev) => prev + "·");
+          setCurrentSequence((prev) => {
+            const next = prev + "·";
+            console.log("[Index] handleKeyDown dot", { previous: prev, next });
+            return next;
+          });
           morseAudio.playDot();
           break;
         case "ArrowRight":
         case "-":
         case "t":
         case "T":
-          setCurrentSequence((prev) => prev + "−");
+          setCurrentSequence((prev) => {
+            const next = prev + "−";
+            console.log("[Index] handleKeyDown dash", { previous: prev, next });
+            return next;
+          });
           morseAudio.playDash();
           break;
         case " ":
@@ -207,15 +280,27 @@ const Index = () => {
           if (currentSequence) {
             handleKeyPress(currentSequence);
           } else {
-            setDecodedText((prev) => prev + " ");
+            setDecodedText((prev) => {
+              const next = prev + " ";
+              console.log("[Index] handleKeyDown space", { previous: prev, next });
+              return next;
+            });
             setLastChar(" ");
           }
           break;
         case "Backspace":
           if (currentSequence) {
-            setCurrentSequence((prev) => prev.slice(0, -1));
+            setCurrentSequence((prev) => {
+              const next = prev.slice(0, -1);
+              console.log("[Index] handleKeyDown backspace sequence", { previous: prev, next });
+              return next;
+            });
           } else if (decodedText) {
-            setDecodedText((prev) => prev.slice(0, -1));
+            setDecodedText((prev) => {
+              const next = prev.slice(0, -1);
+              console.log("[Index] handleKeyDown backspace decodedText", { previous: prev, next });
+              return next;
+            });
             setLastChar("");
           }
           break;
@@ -225,9 +310,14 @@ const Index = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      stopPlayback();
     };
   }, [currentSequence, decodedText, handleKeyPress, isPlaying]);
+
+  useEffect(() => {
+    return () => {
+      stopPlayback();
+    };
+  }, [stopPlayback]);
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -243,7 +333,10 @@ const Index = () => {
         </div>
 
         {/* Tree section */}
-        <MorseTree currentSequence={currentSequence} />
+        <MorseTree
+          currentSequence={currentSequence}
+          onSelectSequence={handleTreeSequenceSelect}
+        />
 
         {/* Mobile Controls */}
         <div className="lg:hidden">
@@ -265,7 +358,7 @@ const Index = () => {
         {/* Message History */}
         <MessageHistory
           messages={messages}
-          onPlay={playMorseSequence}
+          onPlay={(text) => playMorseSequence(text, { addToHistory: false })}
           onDelete={handleDeleteMessage}
           onClearAll={handleClearAllMessages}
         />
