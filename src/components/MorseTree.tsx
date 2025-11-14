@@ -184,10 +184,6 @@ const renderNode = (
 
     if (!sequence) return;
 
-    console.log("[MorseTree] handleSelect", {
-      char: node.char,
-      sequence,
-    });
     onSelectSequence(sequence);
   };
 
@@ -196,10 +192,6 @@ const renderNode = (
 
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      console.log("[MorseTree] handleKeyDown select", {
-        char: node.char,
-        key: event.key,
-      });
       handleSelect();
     }
   };

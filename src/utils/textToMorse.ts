@@ -103,3 +103,49 @@ export const toMorseCode = (
   console.log("[toMorseCode] result", { result: trimmed });
   return trimmed;
 };
+
+interface ToMorseCodeOptions {
+  letterSeparator?: string;
+  wordSeparator?: string;
+}
+
+export const toMorseCode = (
+  text: string,
+  { letterSeparator = " ", wordSeparator = " / " }: ToMorseCodeOptions = {}
+): string => {
+  const tokens: string[] = [];
+
+  for (const char of text.toUpperCase()) {
+    if (char === " ") {
+      if (tokens.length === 0 || tokens[tokens.length - 1] === wordSeparator) {
+        continue;
+      }
+
+      tokens.push(wordSeparator);
+      continue;
+    }
+
+    const morse = charToMorse[char];
+    if (morse) {
+      tokens.push(morse);
+    }
+  }
+
+  let result = "";
+
+  for (const token of tokens) {
+    if (token === wordSeparator) {
+      result = result.trimEnd();
+      result += wordSeparator;
+      continue;
+    }
+
+    if (result && !result.endsWith(wordSeparator)) {
+      result += letterSeparator;
+    }
+
+    result += token;
+  }
+
+  return result.trim();
+};

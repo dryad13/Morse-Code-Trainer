@@ -110,9 +110,6 @@ const Index = () => {
   };
 
   const stopPlayback = useCallback(() => {
-    console.log("[Index] stopPlayback invoked", {
-      hasTimeout: Boolean(playbackRef.current),
-    });
     if (playbackRef.current) {
       clearTimeout(playbackRef.current);
       playbackRef.current = null;
@@ -122,7 +119,6 @@ const Index = () => {
   }, []);
 
   const handleTreeSequenceSelect = (sequence: string) => {
-    console.log("[Index] handleTreeSequenceSelect invoked", { sequence, isPlaying });
     if (!sequence) return;
 
     if (isPlaying) {
@@ -137,7 +133,6 @@ const Index = () => {
     text: string,
     { addToHistory = true }: { addToHistory?: boolean } = {}
   ) => {
-    console.log("[Index] playMorseSequence invoked", { text, addToHistory, isPlaying });
     if (isPlaying) {
       stopPlayback();
       return;
@@ -150,7 +145,6 @@ const Index = () => {
         text,
         timestamp: new Date(),
       };
-      console.log("[Index] playMorseSequence adding history", newMessage);
       setMessages((prev) => [newMessage, ...prev]);
     }
 
