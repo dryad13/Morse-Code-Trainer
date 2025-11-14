@@ -1,7 +1,8 @@
-import { useState, type MouseEvent } from "react";
+import { useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus } from "lucide-react";
+import { toMorseCode } from "@/utils/textToMorse";
 
 interface TreeNode {
   char: string;
@@ -158,17 +159,52 @@ const findPath = (sequence: string): PathInfo => {
   return result;
 };
 
-const renderNode = (node: TreeNode | undefined, pathInfo: PathInfo, isRoot = false): JSX.Element | null => {
+const renderNode = (
+  node: TreeNode | undefined,
+  pathInfo: PathInfo,
+  isRoot = false,
+  onSelectSequence?: (sequence: string) => void
+): JSX.Element | null => {
   if (!node) return null;
-  
+
   const nodeKey = `${node.char}-${node.x}-${node.y}`;
   const isHighlighted = pathInfo.nodes.has(nodeKey);
-  const isCurrent = pathInfo.currentNode?.char === node.char && 
-                    pathInfo.currentNode?.x === node.x && 
+  const isCurrent = pathInfo.currentNode?.char === node.char &&
+                    pathInfo.currentNode?.x === node.x &&
                     pathInfo.currentNode?.y === node.y;
-  
+  const isSelectable = node.char !== "START";
+
+  const handleSelect = () => {
+    if (!isSelectable || !onSelectSequence) return;
+
+    const sequence = toMorseCode(node.char, {
+      letterSeparator: "",
+      wordSeparator: "",
+    });
+
+    if (!sequence) return;
+
+    onSelectSequence(sequence);
+  };
+
+  const handleKeyDown = (event: ReactKeyboardEvent<SVGGElement>) => {
+    if (!isSelectable) return;
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleSelect();
+    }
+  };
+
   return (
-    <g key={nodeKey}>
+    <g
+      key={nodeKey}
+      role={isSelectable ? "button" : undefined}
+      tabIndex={isSelectable ? 0 : undefined}
+      onClick={handleSelect}
+      onKeyDown={handleKeyDown}
+      style={{ cursor: isSelectable ? "pointer" : "default" }}
+    >
       {/* Draw lines to children */}
       {node.dotChild && (
         <>
@@ -233,10 +269,10 @@ const renderNode = (node: TreeNode | undefined, pathInfo: PathInfo, isRoot = fal
       >
         {node.char === "START" ? "⚡" : node.char}
       </text>
-      
+
       {/* Recursively render children */}
-      {renderNode(node.dotChild, pathInfo)}
-      {renderNode(node.dashChild, pathInfo)}
+      {renderNode(node.dotChild, pathInfo, false, onSelectSequence)}
+      {renderNode(node.dashChild, pathInfo, false, onSelectSequence)}
     </g>
   );
 };
@@ -247,9 +283,10 @@ const ZOOM_STEP = 0.15;
 
 interface MorseTreeProps {
   currentSequence?: string;
+  onSelectSequence?: (sequence: string) => void;
 }
 
-export const MorseTree = ({ currentSequence = "" }: MorseTreeProps) => {
+export const MorseTree = ({ currentSequence = "", onSelectSequence }: MorseTreeProps) => {
   const tree = buildTree();
   const pathInfo = findPath(currentSequence);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -322,7 +359,7 @@ export const MorseTree = ({ currentSequence = "" }: MorseTreeProps) => {
       >
         <svg viewBox="0 0 850 420" className="h-[460px] w-full select-none">
           <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-            {renderNode(tree, pathInfo, true)}
+            {renderNode(tree, pathInfo, true, onSelectSequence)}
           </g>
         </svg>
       </div>
