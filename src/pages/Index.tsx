@@ -92,19 +92,35 @@ const Index = () => {
     setCurrentSequence("");
   };
 
-  const playMorseSequence = async (text: string) => {
+  const handleTreeSequenceSelect = (sequence: string) => {
+    if (!sequence) return;
+
+    if (isPlaying) {
+      stopPlayback();
+    }
+
+    setCurrentSequence(sequence);
+    setLastChar("");
+  };
+
+  const playMorseSequence = async (
+    text: string,
+    { addToHistory = true }: { addToHistory?: boolean } = {}
+  ) => {
     if (isPlaying) {
       stopPlayback();
       return;
     }
 
-    // Add to history
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [newMessage, ...prev]);
+    if (addToHistory) {
+      // Add to history
+      const newMessage: Message = {
+        id: Date.now().toString(),
+        text,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [newMessage, ...prev]);
+    }
 
     setIsPlaying(true);
     const morseSequences = textToMorse(text);
@@ -243,7 +259,10 @@ const Index = () => {
         </div>
 
         {/* Tree section */}
-        <MorseTree currentSequence={currentSequence} />
+        <MorseTree
+          currentSequence={currentSequence}
+          onSelectSequence={handleTreeSequenceSelect}
+        />
 
         {/* Mobile Controls */}
         <div className="lg:hidden">
@@ -265,7 +284,7 @@ const Index = () => {
         {/* Message History */}
         <MessageHistory
           messages={messages}
-          onPlay={playMorseSequence}
+          onPlay={(text) => playMorseSequence(text, { addToHistory: false })}
           onDelete={handleDeleteMessage}
           onClearAll={handleClearAllMessages}
         />
