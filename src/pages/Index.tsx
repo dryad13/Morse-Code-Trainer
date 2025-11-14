@@ -83,28 +83,44 @@ const Index = () => {
     }
   };
 
-  const stopPlayback = () => {
+  const stopPlayback = useCallback(() => {
     if (playbackRef.current) {
       clearTimeout(playbackRef.current);
       playbackRef.current = null;
     }
     setIsPlaying(false);
     setCurrentSequence("");
+  }, []);
+
+  const handleTreeSequenceSelect = (sequence: string) => {
+    if (!sequence) return;
+
+    if (isPlaying) {
+      stopPlayback();
+    }
+
+    setCurrentSequence(sequence);
+    setLastChar("");
   };
 
-  const playMorseSequence = async (text: string) => {
+  const playMorseSequence = async (
+    text: string,
+    { addToHistory = true }: { addToHistory?: boolean } = {}
+  ) => {
     if (isPlaying) {
       stopPlayback();
       return;
     }
 
-    // Add to history
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [newMessage, ...prev]);
+    if (addToHistory) {
+      // Add to history
+      const newMessage: Message = {
+        id: Date.now().toString(),
+        text,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [newMessage, ...prev]);
+    }
 
     setIsPlaying(true);
     const morseSequences = textToMorse(text);
@@ -225,9 +241,14 @@ const Index = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      stopPlayback();
     };
   }, [currentSequence, decodedText, handleKeyPress, isPlaying]);
+
+  useEffect(() => {
+    return () => {
+      stopPlayback();
+    };
+  }, [stopPlayback]);
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -243,7 +264,10 @@ const Index = () => {
         </div>
 
         {/* Tree section */}
-        <MorseTree currentSequence={currentSequence} />
+        <MorseTree
+          currentSequence={currentSequence}
+          onSelectSequence={handleTreeSequenceSelect}
+        />
 
         {/* Mobile Controls */}
         <div className="lg:hidden">
@@ -265,7 +289,7 @@ const Index = () => {
         {/* Message History */}
         <MessageHistory
           messages={messages}
-          onPlay={playMorseSequence}
+          onPlay={(text) => playMorseSequence(text, { addToHistory: false })}
           onDelete={handleDeleteMessage}
           onClearAll={handleClearAllMessages}
         />
