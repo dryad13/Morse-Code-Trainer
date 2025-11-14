@@ -130,7 +130,7 @@ const Index = () => {
 
       // Play each dot/dash in the sequence
       let dotDashIndex = 0;
-      setCurrentSequence("");
+      let builtSequence = "";
 
       const playDotDash = () => {
         if (dotDashIndex >= sequence.length) {
@@ -141,7 +141,8 @@ const Index = () => {
         }
 
         const symbol = sequence[dotDashIndex];
-        setCurrentSequence((prev) => prev + symbol);
+        builtSequence += symbol;
+        setCurrentSequence(builtSequence);
         
         if (symbol === "·") {
           morseAudio.playDot();
