@@ -95,12 +95,43 @@ const Index = () => {
   const handleTreeSequenceSelect = (sequence: string) => {
     if (!sequence) return;
 
-    if (isPlaying) {
-      stopPlayback();
-    }
+    stopPlayback();
 
-    setCurrentSequence(sequence);
+    setIsPlaying(true);
     setLastChar("");
+
+    let index = 0;
+    let builtSequence = "";
+
+    const playNextSymbol = () => {
+      if (index >= sequence.length) {
+        setIsPlaying(false);
+        playbackRef.current = setTimeout(() => {
+          setCurrentSequence("");
+          playbackRef.current = null;
+        }, 500);
+        return;
+      }
+
+      const symbol = sequence[index];
+      builtSequence += symbol;
+      setCurrentSequence(builtSequence);
+
+      if (symbol === "·") {
+        morseAudio.playDot();
+      } else if (symbol === "−") {
+        morseAudio.playDash();
+      }
+
+      index++;
+
+      const duration = symbol === "−" ? 240 : 80;
+      playbackRef.current = setTimeout(() => {
+        playNextSymbol();
+      }, duration + 50);
+    };
+
+    playNextSymbol();
   };
 
   const playMorseSequence = async (
