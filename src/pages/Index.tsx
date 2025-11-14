@@ -1,4 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  type SetStateAction,
+} from "react";
 import { MorseDisplay } from "@/components/MorseDisplay";
 import { MorseTree } from "@/components/MorseTree";
 import { Instructions } from "@/components/Instructions";
@@ -26,23 +32,58 @@ const Index = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const playbackRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
 
-  const handleKeyPress = useCallback((sequence: string) => {
-    const char = decodeMorse(sequence);
-    setLastChar(char);
-    setDecodedText((prev) => prev + char);
-    setCurrentSequence("");
-    
-    if (char === "?") {
-      morseAudio.playError();
-      toast.error("Unknown morse code sequence");
-    } else {
-      morseAudio.playSuccess();
+  const clearPlaybackTimers = useCallback(() => {
+    if (playbackRef.current) {
+      clearTimeout(playbackRef.current);
+      playbackRef.current = null;
     }
   }, []);
 
+  const setIsPlayingIfMounted = useCallback(
+    (value: SetStateAction<boolean>) => {
+      if (isMountedRef.current) {
+        setIsPlaying(value);
+      }
+    },
+    [setIsPlaying],
+  );
+
+  const setCurrentSequenceIfMounted = useCallback(
+    (value: SetStateAction<string>) => {
+      if (isMountedRef.current) {
+        setCurrentSequence(value);
+      }
+    },
+    [setCurrentSequence],
+  );
+
+  const stopPlayback = useCallback(() => {
+    clearPlaybackTimers();
+    setIsPlayingIfMounted(false);
+    setCurrentSequenceIfMounted("");
+  }, [clearPlaybackTimers, setCurrentSequenceIfMounted, setIsPlayingIfMounted]);
+
+  const handleKeyPress = useCallback(
+    (sequence: string) => {
+      const char = decodeMorse(sequence);
+      setLastChar(char);
+      setDecodedText((prev) => prev + char);
+      setCurrentSequenceIfMounted("");
+
+      if (char === "?") {
+        morseAudio.playError();
+        toast.error("Unknown morse code sequence");
+      } else {
+        morseAudio.playSuccess();
+      }
+    },
+    [setCurrentSequenceIfMounted],
+  );
+
   const handleClear = () => {
-    setCurrentSequence("");
+    setCurrentSequenceIfMounted("");
     setDecodedText("");
     setLastChar("");
     toast.success("Cleared");
@@ -56,12 +97,12 @@ const Index = () => {
   };
 
   const handleDot = () => {
-    setCurrentSequence((prev) => prev + "·");
+    setCurrentSequenceIfMounted((prev) => prev + "·");
     morseAudio.playDot();
   };
 
   const handleDash = () => {
-    setCurrentSequence((prev) => prev + "−");
+    setCurrentSequenceIfMounted((prev) => prev + "−");
     morseAudio.playDash();
   };
 
@@ -76,20 +117,11 @@ const Index = () => {
 
   const handleBackspace = () => {
     if (currentSequence) {
-      setCurrentSequence((prev) => prev.slice(0, -1));
+      setCurrentSequenceIfMounted((prev) => prev.slice(0, -1));
     } else if (decodedText) {
       setDecodedText((prev) => prev.slice(0, -1));
       setLastChar("");
     }
-  };
-
-  const stopPlayback = () => {
-    if (playbackRef.current) {
-      clearTimeout(playbackRef.current);
-      playbackRef.current = null;
-    }
-    setIsPlaying(false);
-    setCurrentSequence("");
   };
 
   const playMorseSequence = async (text: string) => {
@@ -106,23 +138,23 @@ const Index = () => {
     };
     setMessages((prev) => [newMessage, ...prev]);
 
-    setIsPlaying(true);
+    setIsPlayingIfMounted(true);
     const morseSequences = textToMorse(text);
     
     let index = 0;
-    
+
     const playNext = () => {
       if (index >= morseSequences.length) {
-        setIsPlaying(false);
-        setCurrentSequence("");
+        setIsPlayingIfMounted(false);
+        setCurrentSequenceIfMounted("");
         return;
       }
 
       const sequence = morseSequences[index];
-      
+
       if (sequence === " ") {
         // Space between words
-        setCurrentSequence("");
+        setCurrentSequenceIfMounted("");
         index++;
         playbackRef.current = setTimeout(playNext, 400);
         return;
@@ -130,7 +162,7 @@ const Index = () => {
 
       // Play each dot/dash in the sequence
       let dotDashIndex = 0;
-      setCurrentSequence("");
+      setCurrentSequenceIfMounted("");
 
       const playDotDash = () => {
         if (dotDashIndex >= sequence.length) {
@@ -141,8 +173,8 @@ const Index = () => {
         }
 
         const symbol = sequence[dotDashIndex];
-        setCurrentSequence((prev) => prev + symbol);
-        
+        setCurrentSequenceIfMounted((prev) => prev + symbol);
+
         if (symbol === "·") {
           morseAudio.playDot();
           dotDashIndex++;
@@ -181,11 +213,11 @@ const Index = () => {
 
       switch (e.key) {
         case "ArrowDown":
-          setCurrentSequence((prev) => prev + "·");
+          setCurrentSequenceIfMounted((prev) => prev + "·");
           morseAudio.playDot();
           break;
         case "ArrowRight":
-          setCurrentSequence((prev) => prev + "−");
+          setCurrentSequenceIfMounted((prev) => prev + "−");
           morseAudio.playDash();
           break;
         case " ":
@@ -199,7 +231,7 @@ const Index = () => {
           break;
         case "Backspace":
           if (currentSequence) {
-            setCurrentSequence((prev) => prev.slice(0, -1));
+            setCurrentSequenceIfMounted((prev) => prev.slice(0, -1));
           } else if (decodedText) {
             setDecodedText((prev) => prev.slice(0, -1));
             setLastChar("");
@@ -211,9 +243,23 @@ const Index = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      stopPlayback();
+      clearPlaybackTimers();
     };
-  }, [currentSequence, decodedText, handleKeyPress, isPlaying]);
+  }, [
+    clearPlaybackTimers,
+    currentSequence,
+    decodedText,
+    handleKeyPress,
+    isPlaying,
+    setCurrentSequenceIfMounted,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      clearPlaybackTimers();
+    };
+  }, [clearPlaybackTimers]);
 
   return (
     <div className="min-h-screen bg-background p-6">
