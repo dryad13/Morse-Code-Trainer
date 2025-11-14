@@ -175,22 +175,35 @@ const Index = () => {
       // Don't intercept keys during playback
       if (isPlaying) return;
 
-      // Prevent default behavior for arrow keys
-      if (["ArrowRight", "ArrowDown", "ArrowUp", "ArrowLeft", " ", "Enter", "Backspace"].includes(e.key)) {
+      // Ignore typing inside inputs/textareas/contentEditable
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      const isEditable = tag === 'input' || tag === 'textarea' || (target as any)?.isContentEditable;
+      if (isEditable) return;
+
+      // Prevent default behavior for navigation/confirm keys
+      if (["ArrowRight", "ArrowDown", "ArrowUp", "ArrowLeft", " ", "Enter", "Backspace", ".", "-", "/"].includes(e.key)) {
         e.preventDefault();
       }
 
       switch (e.key) {
         case "ArrowDown":
+        case ".":
+        case "e":
+        case "E":
           setCurrentSequence((prev) => prev + "·");
           morseAudio.playDot();
           break;
         case "ArrowRight":
+        case "-":
+        case "t":
+        case "T":
           setCurrentSequence((prev) => prev + "−");
           morseAudio.playDash();
           break;
         case " ":
         case "Enter":
+        case "/": // Optional: slash as word separator
           if (currentSequence) {
             handleKeyPress(currentSequence);
           } else {
