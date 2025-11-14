@@ -83,14 +83,14 @@ const Index = () => {
     }
   };
 
-  const stopPlayback = () => {
+  const stopPlayback = useCallback(() => {
     if (playbackRef.current) {
       clearTimeout(playbackRef.current);
       playbackRef.current = null;
     }
     setIsPlaying(false);
     setCurrentSequence("");
-  };
+  }, []);
 
   const handleTreeSequenceSelect = (sequence: string) => {
     if (!sequence) return;
@@ -241,9 +241,14 @@ const Index = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      stopPlayback();
     };
   }, [currentSequence, decodedText, handleKeyPress, isPlaying]);
+
+  useEffect(() => {
+    return () => {
+      stopPlayback();
+    };
+  }, [stopPlayback]);
 
   return (
     <div className="min-h-screen bg-background p-6">
